@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -80,6 +81,7 @@ public class OrderServiceImpl implements OrderService {
             accountRepository.findById(request.getAccountId()).ifPresent(order::setAccount);
         }
         // You can map order details from request if needed
+
         return order;
     }
 
@@ -96,14 +98,21 @@ public class OrderServiceImpl implements OrderService {
         }
         Order savedOrder = orderRepository.save(order);
 
-        // Save OrderDetail for the purchased orchid
+        // Create and save OrderDetail for the purchased orchid
         if (request.getOrchidId() != null) {
             OrderDetail detail = new OrderDetail();
-            detail.setOrder(savedOrder);
+            detail.setOrderId(savedOrder.getOrderId());
             detail.setQuantity(request.getQuantity());
             detail.setPrice(BigDecimal.valueOf(request.getPrice()));
             orchidRepository.findById(request.getOrchidId()).ifPresent(detail::setOrchid);
-            orderDetailRepository.save(detail);
+            OrderDetail savedDetail = orderDetailRepository.save(detail);
+            
+            // Update the order's orderDetails list
+            if (savedOrder.getOrderDetails() == null) {
+                savedOrder.setOrderDetails(new ArrayList<>());
+            }
+            savedOrder.getOrderDetails().add(savedDetail);
+            savedOrder = orderRepository.save(savedOrder);
         }
 
         return toResponse(savedOrder);
